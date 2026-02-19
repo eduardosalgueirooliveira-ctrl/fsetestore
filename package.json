@@ -1,0 +1,12 @@
+{
+  "name": "digital-store",
+  "version": "1.0.0",
+  "description": "Loja de produtos digitais com Stripe",
+  "main": "index.html",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "stripe": "^14.0.0"
+  }
+}

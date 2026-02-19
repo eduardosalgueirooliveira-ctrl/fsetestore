@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seu Link Store - Produtos Digitais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0a0a0a',
+                        darker: '#050505',
+                        primary: '#7c3aed',
+                        'primary-hover': '#6d28d9',
+                        surface: '#111111',
+                        'surface-hover': '#1a1a1a'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0a0a0a; color: #ffffff; }
+        .gradient-text {
+            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .product-card {
+            transition: all 0.3s ease;
+            border: 1px solid #1a1a1a;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            border-color: #7c3aed;
+            box-shadow: 0 10px 40px -10px rgba(124, 58, 237, 0.3);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px -5px rgba(124, 58, 237, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .category-badge {
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+        }
+        .testimonial-card {
+            background: linear-gradient(135deg, #111111 0%, #0a0a0a 100%);
+            border: 1px solid #1a1a1a;
+        }
+        .feature-icon {
+            background: linear-gradient(135deg, #7c3aed20 0%, #6d28d920 100%);
+        }
+        .faq-item {
+            border: 1px solid #1a1a1a;
+            transition: all 0.3s ease;
+        }
+        .faq-item:hover { border-color: #7c3aed40; }
+        .price-original { text-decoration: line-through; color: #6b7280; }
+        .price-current { color: #7c3aed; font-weight: 700; }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .mobile-menu.active { transform: translateX(0); }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 4px; }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-dark/95 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <button id="menuBtn" class="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                        <i class="fas fa-bars text-white text-xl"></i>
+                    </button>
+                    <a href="#" class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-gradient-to-br from-red-600 to-red-800 rounded flex items-center justify-center font-bold text-white text-lg">H</div>
+                    </a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="#" class="hidden sm:flex items-center gap-2 px-4 py-2 bg-surface hover:bg-surface-hover rounded-lg transition-colors text-sm font-medium border border-white/10">
+                        <i class="fas fa-arrow-right text-primary"></i>
+                        DICAS GRATIS AQUI
+                    </a>
+                    <button onclick="toggleCart()" class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover rounded-lg transition-all text-sm font-medium relative">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span class="hidden sm:inline">Carrinho</span>
+                        <span id="cartCount" class="bg-white text-primary text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="mobile-menu fixed inset-0 z-40 bg-dark pt-20 px-4">
+        <div class="flex flex-col gap-4">
+            <a href="#novidades" class="p-4 bg-surface rounded-lg hover:bg-surface-hover transition-colors" onclick="closeMenu()">Novidades</a>
+            <a href="#trampos" class="p-4 bg-surface rounded-lg hover:bg-surface-hover transition-colors" onclick="closeMenu()">Trampos</a>
+            <a href="#avaliacoes" class="p-4 bg-surface rounded-lg hover:bg-surface-hover transition-colors" onclick="closeMenu()">Avaliações</a>
+            <a href="#faq" class="p-4 bg-surface rounded-lg hover:bg-surface-hover transition-colors" onclick="closeMenu()">FAQ</a>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div id="cartSidebar" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-surface border-l border-white/10 transform translate-x-full transition-transform duration-300 z-50 overflow-y-auto">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Seu Carrinho</h2>
+                <button onclick="toggleCart()" class="p-2 hover:bg-white/5 rounded-lg">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="cartItems" class="space-y-4 mb-6">
+                <p class="text-gray-400 text-center py-8">Carrinho vazio</p>
+            </div>
+            <div id="cartFooter" class="hidden border-t border-white/10 pt-4">
+                <div class="flex justify-between mb-4 text-lg font-bold">
+                    <span>Total:</span>
+                    <span id="cartTotal" class="text-primary">R$ 0,00</span>
+                </div>
+                <button onclick="checkout()" id="checkoutBtn" class="btn-primary w-full py-4 rounded-lg font-bold text-lg">
+                    Finalizar Compra
+                </button>
+                <p class="text-xs text-gray-500 text-center mt-3">
+                    <i class="fas fa-lock mr-1"></i>
+                    Pagamento seguro via Stripe
+                </p>
+            </div>
+        </div>
+    </div>
+    <div id="cartOverlay" onclick="toggleCart()" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity"></div>
+
+    <!-- Hero -->
+    <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium mb-6">
+                <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                Entrega Automática Imediata
+            </div>
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                Os melhores <span class="gradient-text">esquemas</span> e<br>
+                <span class="gradient-text">métodos</span> atualizados
+            </h1>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
+                Produtos digitais selecionados com entrega automática. Acesso imediato após a confirmação do pagamento.
+            </p>
+        </div>
+    </section>
+
+    <!-- Novidades -->
+    <section id="novidades" class="py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <span class="category-badge px-4 py-2 rounded-lg text-primary font-semibold text-sm uppercase tracking-wider">Novidades</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="novidadesGrid"></div>
+        </div>
+    </section>
+
+    <!-- Trampos -->
+    <section id="trampos" class="py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <span class="category-badge px-4 py-2 rounded-lg text-primary font-semibold text-sm uppercase tracking-wider mb-8 inline-block">Trampos</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="tramposGrid"></div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="grid grid-cols-2 gap-8 mb-12">
+                <div>
+                    <div class="text-5xl sm:text-6xl font-bold gradient-text mb-2">+40.000</div>
+                    <div class="text-gray-400 uppercase tracking-wider text-sm font-semibold">Clientes</div>
+                </div>
+                <div>
+                    <div class="text-5xl sm:text-6xl font-bold gradient-text mb-2">+5.000</div>
+                    <div class="text-gray-400 uppercase tracking-wider text-sm font-semibold">Avaliações</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section id="avaliacoes" class="py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="testimonialsGrid"></div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center p-8 rounded-2xl bg-surface border border-white/5 hover:border-primary/30 transition-all">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full feature-icon flex items-center justify-center">
+                        <i class="fas fa-lock text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Compra Segura</h3>
+                    <p class="text-gray-400 text-sm">Garantimos total segurança em todas as etapas da sua compra.</p>
+                </div>
+                <div class="text-center p-8 rounded-2xl bg-surface border border-white/5 hover:border-primary/30 transition-all">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full feature-icon flex items-center justify-center">
+                        <i class="fas fa-check-circle text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Entrega 100% Garantida</h3>
+                    <p class="text-gray-400 text-sm">Receba seus produtos com rapidez e total garantia de entrega.</p>
+                </div>
+                <div class="text-center p-8 rounded-2xl bg-surface border border-white/5 hover:border-primary/30 transition-all">
+                    <div class="w-16 h-16 mx-auto mb-6 rounded-full feature-icon flex items-center justify-center">
+                        <i class="fas fa-comments text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Suporte Profissional</h3>
+                    <p class="text-gray-400 text-sm">Equipe especializada pronta para te ajudar a qualquer momento.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="py-16 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div>
+                    <h2 class="text-3xl font-bold gradient-text mb-4">Perguntas frequentes</h2>
+                    <p class="text-gray-400 mb-6">Veja abaixo as perguntas mais frequentes sobre nossos serviços e produtos.</p>
+                    <p class="text-gray-400 text-sm mb-8">Nosso atendimento é de segunda a sábado: das <span class="text-white font-semibold">10h às 21h</span>.</p>
+                    <button class="btn-primary px-8 py-3 rounded-full font-semibold text-sm">Ver todas as perguntas</button>
+                </div>
+                <div class="space-y-4" id="faqContainer"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-red-600 to-red-800 rounded flex items-center justify-center font-bold text-white">H</div>
+                    <span class="text-gray-400 text-sm">© 2026 Seu Link Store. Todos os direitos reservados.</span>
+                </div>
+                <div class="flex gap-6">
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors"><i class="fab fa-instagram text-xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors"><i class="fab fa-telegram text-xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-primary transition-colors"><i class="fab fa-whatsapp text-xl"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-24 right-6 bg-surface border border-primary/30 text-white px-6 py-4 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fas fa-check-circle text-primary"></i>
+        <span id="toastMessage">Produto adicionado!</span>
+    </div>
+
+    <script>
+        // Dados dos produtos
+        const products = [
+            // Novidades
+            { id: 1, category: 'novidades', name: 'APRENDA A COLETA & VENDER CARTÕES CLONADOS', description: 'Método completo 2026', price: 47.90, originalPrice: 'R$ 223,49', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=CARTOES', emoji: '💳' },
+            { id: 2, category: 'novidades', name: 'ESQUEMA APROVANDO QUALQUER SITE', description: 'Método garantido 🍀', price: 28.49, originalPrice: 'R$ 76,69', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=APROVANDO', emoji: '🎲' },
+            { id: 3, category: 'novidades', name: 'TENHA SEU PRÓPRIO CASSINO COMPLETO', description: 'Sistema pronto 🍀', price: 19.90, originalPrice: 'R$ 76,69', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=CASSINO', emoji: '🎰' },
+            { id: 4, category: 'novidades', name: 'TUTORIAL - CLONAGEM DE CARTÃO', description: 'Guia completo 🍀', price: 27.40, originalPrice: 'R$ 76,69', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=CLONAGEM', emoji: '💳' },
+
+            // Trampos
+            { id: 5, category: 'trampos', name: 'APLICATIVO FAKE NUBANK ANDROID', description: 'Completo atualizado', price: 272.86, originalPrice: 'R$ 762,06', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=NUBANK', emoji: '💛' },
+            { id: 6, category: 'trampos', name: 'ESQUEMA MAGALU 2026', description: 'Método atualizado', price: 27.90, originalPrice: 'R$ 76,06', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=MAGALU', emoji: '💙' },
+            { id: 7, category: 'trampos', name: 'VIRADA DE SALDO PAGBANK', description: 'Atualizado 2026 💰', price: 17.90, originalPrice: 'R$ 76,06', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=PAGBANK', emoji: '💳' },
+            { id: 8, category: 'trampos', name: 'VIRAR SALDO POR APROXIMAÇÃO', description: 'Tutorial completo 💸', price: 14.90, originalPrice: 'R$ 76,06', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=APROX', emoji: '💳' },
+            { id: 9, category: 'trampos', name: 'ESQUEMA EMPRÉSTIMO BANCO DO BRASIL', description: '2026 completo', price: 570.90, originalPrice: 'R$ 1222,46', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=EMPRESTIMO', emoji: '💖' },
+            { id: 10, category: 'trampos', name: 'VIRADA DE SALDO SUMUP', description: 'Atualizado', price: 25.90, originalPrice: 'R$ 244,26', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=SUMUP', emoji: '💚' },
+            { id: 11, category: 'trampos', name: 'SITE PRONTO PLATAFORMA PIRÂMIDE', description: 'Com tutorial', price: 119.90, originalPrice: 'R$ 27,86', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=PIRAMIDE', emoji: '🎁' },
+            { id: 12, category: 'trampos', name: 'INVASÃO DE CONTA MERCADO PAGO', description: '2026 completo', price: 71.90, originalPrice: 'R$ 148,06', image: 'https://placehold.co/400x250/1a1a1a/7c3aed?text=MP', emoji: '🔓' }
+        ];
+
+        const testimonials = [
+            { initials: "AS", name: "Aline Santos", text: "Qualidade impecável, sem complicação nenhuma. Amei!", date: "03/12/2025" },
+            { initials: "CA", name: "Cliente Anônimo", text: "Facilidade absurda, nunca vi nada tão prático. Estão de parabéns", date: "03/12/2025" },
+            { initials: "CR", name: "Carlos Ribeiro", text: "Mano, muito bom! Sem dor de cabeça e entrega instantânea", date: "03/12/2025" },
+            { initials: "DL", name: "Diego Lima", text: "Tudo certo com a Prime e HBO. Mês que vem, comprarei novamente!", date: "03/12/2025" }
+        ];
+
+        const faqs = [
+            { question: "Como funciona o envio?", answer: "Após a confirmação do pagamento, você recebe o acesso automaticamente no seu e-mail cadastrado. A entrega é 100% digital e imediata." },
+            { question: "É confiável comprar aqui?", answer: "Sim! Temos mais de 40.000 clientes satisfeitos e 5.000 avaliações positivas. Oferecemos garantia de entrega em todos os produtos." },
+            { question: "Alguma pergunta?", answer: "Nosso suporte está disponível de segunda a sábado, das 10h às 21h. Entre em contato pelo Telegram ou WhatsApp para tirar suas dúvidas." }
+        ];
+
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        function renderProducts() {
+            const novidades = products.filter(p => p.category === 'novidades');
+            const trampos = products.filter(p => p.category === 'trampos');
+
+            document.getElementById('novidadesGrid').innerHTML = novidades.map(p => createProductCard(p)).join('');
+            document.getElementById('tramposGrid').innerHTML = trampos.map(p => createProductCard(p)).join('');
+        }
+
+        function createProductCard(product) {
+            return `
+                <div class="product-card bg-surface rounded-xl overflow-hidden group">
+                    <div class="relative">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover">
+                        <div class="absolute top-2 right-2 bg-primary/90 text-white text-xs font-bold px-2 py-1 rounded">ENTREGA AUTOMÁTICA</div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-sm font-medium mb-3 line-clamp-2 h-10">${product.emoji} ${product.name}</h3>
+                        <div class="mb-4">
+                            <div class="price-original text-xs">${product.originalPrice}</div>
+                            <div class="price-current text-xl">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
+                        </div>
+                        <button onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&#39;")})' class="btn-primary w-full py-3 rounded-lg font-semibold text-sm">
+                            Comprar agora
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTestimonials() {
+            document.getElementById('testimonialsGrid').innerHTML = testimonials.map(t => `
+                <div class="testimonial-card p-6 rounded-xl">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">${t.initials}</div>
+                        <div>
+                            <div class="font-semibold text-sm">${t.name}</div>
+                            <div class="flex text-yellow-400 text-xs">
+                                ${Array(5).fill('<i class="fas fa-star"></i>').join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-3">${t.text}</p>
+                    <div class="text-gray-600 text-xs">${t.date}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderFAQ() {
+            document.getElementById('faqContainer').innerHTML = faqs.map((faq, i) => `
+                <div class="faq-item rounded-lg overflow-hidden">
+                    <button onclick="toggleFaq(${i})" class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
+                        <span class="font-medium">${faq.question}</span>
+                        <i id="faq-icon-${i}" class="fas fa-chevron-down text-gray-400 transition-transform"></i>
+                    </button>
+                    <div id="faq-answer-${i}" class="hidden px-4 pb-4 text-gray-400 text-sm">${faq.answer}</div>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(product) {
+            const existing = cart.find(item => item.id === product.id);
+            if (existing) {
+                showToast('Produto já está no carrinho!');
+                return;
+            }
+            cart.push(product);
+            saveCart();
+            updateCartUI();
+            showToast(`${product.emoji} ${product.name.substring(0, 25)}... adicionado!`);
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(item => item.id !== id);
+            saveCart();
+            updateCartUI();
+        }
+
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
+
+        function updateCartUI() {
+            document.getElementById('cartCount').textContent = cart.length;
+
+            const cartItems = document.getElementById('cartItems');
+            const cartFooter = document.getElementById('cartFooter');
+
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-400 text-center py-8">Carrinho vazio</p>';
+                cartFooter.classList.add('hidden');
+                return;
+            }
+
+            cartItems.innerHTML = cart.map(item => `
+                <div class="flex gap-4 bg-darker p-4 rounded-lg">
+                    <img src="${item.image}" class="w-20 h-20 object-cover rounded-lg">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-sm mb-1 line-clamp-2">${item.emoji} ${item.name}</h4>
+                        <p class="text-primary font-bold">R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+                    </div>
+                    <button onclick="removeFromCart(${item.id})" class="text-gray-500 hover:text-red-500 transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            document.getElementById('cartTotal').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            cartFooter.classList.remove('hidden');
+        }
+
+        function toggleCart() {
+            const sidebar = document.getElementById('cartSidebar');
+            const overlay = document.getElementById('cartOverlay');
+            const isOpen = !sidebar.classList.contains('translate-x-full');
+
+            if (isOpen) {
+                sidebar.classList.add('translate-x-full');
+                overlay.classList.add('hidden');
+                overlay.classList.remove('opacity-100');
+            } else {
+                sidebar.classList.remove('translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+            }
+        }
+
+        async function checkout() {
+            const btn = document.getElementById('checkoutBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner loading-spinner mr-2"></i> Processando...';
+
+            try {
+                const response = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: cart.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            description: item.description,
+                            price: item.price,
+                            image: item.image
+                        }))
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('URL de checkout não recebida');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro ao processar. Tente novamente.');
+                btn.disabled = false;
+                btn.innerHTML = 'Finalizar Compra';
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function toggleFaq(index) {
+            const answer = document.getElementById(`faq-answer-${index}`);
+            const icon = document.getElementById(`faq-icon-${index}`);
+            const isHidden = answer.classList.contains('hidden');
+
+            // Close all
+            document.querySelectorAll('[id^="faq-answer-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="faq-icon-"]').forEach(el => el.style.transform = 'rotate(0deg)');
+
+            if (isHidden) {
+                answer.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function closeMenu() {
+            document.getElementById('mobileMenu').classList.remove('active');
+        }
+
+        // Event Listeners
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            document.getElementById('mobileMenu').classList.toggle('active');
+        });
+
+        // Init
+        renderProducts();
+        renderTestimonials();
+        renderFAQ();
+        updateCartUI();
+
+        // Check for canceled payment
+        if (window.location.search.includes('canceled=true')) {
+            showToast('Pagamento cancelado. Itens mantidos no carrinho.');
+        }
+    </script>
+</body>
+</html>
